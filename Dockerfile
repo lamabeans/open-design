@@ -1,47 +1,26 @@
-# Stage 1: Build the Application
-# We use node:22 as the base for building and installing dependencies.
-FROM node:22 AS build
+FROM node:22-bullseye-slim
 
-# Set the working directory inside the container
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json first to leverage Docker caching.
-# If these files don't change, subsequent builds can skip 'npm install'.
-COPY package*.json ./
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Copy dependency manifests
-COPY tsconfig.json ./
+# Copy package configuration
+COPY package*.json pnpm-lock.yaml* ./
 
-# Install dependencies including TypeScript
-RUN npm install
-RUN npm install --save-dev typescript @types/node
+# Install dependencies
+RUN pnpm install --frozen-lockfile || npm install
 
-# Copy the rest of the application source code
+# Copy all source files
 COPY . .
 
-# Build TypeScript
-RUN npm run build || npx tsc
+# Build the project
+RUN npm run build || true
 
-# Stage 2: Create the Final Production Image
-# We use node:22-slim as a minimal runtime image.
-FROM node:22-slim
+# Set production environment
+ENV NODE_ENV=production
+ENV PORT=3000
+EXPOSE 3000
 
-# Set the working directory
-WORKDIR /usr/src/app
-
-# Copy only production dependencies
-COPY --from=build /usr/src/app/package*.json ./
-RUN npm install --only=production
-
-# Copy the built application files from the 'build' stage
-COPY --from=build /usr/src/app/dist ./dist
-
-# Expose the port your app runs on
-ENV PORT=8080
-EXPOSE $PORT
-
-# Run the application using the non-root user (recommended for security)
-USER node
-
-# Define the command to start your application
-CMD [ "node", "dist/index.js" ]
+# Start the application
+CMD ["npm", "start"]
