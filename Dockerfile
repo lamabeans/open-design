@@ -8,6 +8,8 @@ WORKDIR /usr/src/app
 # Copy package.json and package-lock.json first to leverage Docker caching.
 # If these files don't change, subsequent builds can skip 'npm install'.
 COPY package*.json ./
+
+# Copy dependency manifests
 COPY tsconfig.json ./
 
 # Install dependencies including TypeScript
